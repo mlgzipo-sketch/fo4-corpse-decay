@@ -16,3 +16,6 @@ Function RemoveAllItems(ObjectReference akTransferTo = None, bool abKeepOwnershi
 Function SetAngle(float afXAngle, float afYAngle, float afZAngle) native
 Function SetScale(float afScale) native
 ObjectReference[] Function FindAllReferencesWithKeyword(Form akKeywordOrList, float afRadius) native
+float Function GetPositionX() native
+float Function GetPositionY() native
+float Function GetPositionZ() native

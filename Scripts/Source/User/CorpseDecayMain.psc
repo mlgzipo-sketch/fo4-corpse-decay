@@ -8,6 +8,7 @@ FormList Property CD_ActorTypes Auto Const      ; keywords of actors that decay
 FormList Property CD_ScavengersExterior Auto Const
 FormList Property CD_ScavengersInterior Auto Const
 Keyword Property ActorTypeRobot Auto Const
+Keyword Property ActorTypeTurret Auto Const
 Keyword Property ActorTypeHuman Auto Const
 Keyword Property ActorTypeGhoul Auto Const
 Keyword Property ActorTypeFeralGhoul Auto Const
@@ -89,6 +90,7 @@ Function Setup()
 		Scavengers.Clear()
 	endif
 	RegisterForRemoteEvent(Game.GetPlayer(), "OnPlayerLoadGame")
+	RegisterForRemoteEvent(Game.GetPlayer(), "OnKill")
 	StartTimer(SCAN_INTERVAL, TIMER_SCAN)
 	Log("started, tracking " + Bodies.Length + " corpses")
 	Say("Corpse Decay is running (" + Bodies.Length + " bodies)")
@@ -115,25 +117,37 @@ Function Scan()
 	Tick += 1
 	bool includeOld = CD_IncludeOldCorpses.GetValueInt() != 0
 
-	ObjectReference[] found = player.FindAllReferencesWithKeyword(CD_ActorTypes, SCAN_RADIUS)
-	int i = 0
-	while i < found.Length
-		Actor a = found[i] as Actor
-		if a != None && a != player && !a.HasKeyword(ActorTypeRobot)
+	; 1) look around: actors near the player, picked at random a few times per scan.
+	;    (ActorType keywords live on races, so a keyword search of references finds almost nobody.)
+	float px = player.GetPositionX()
+	float py = player.GetPositionY()
+	float pz = player.GetPositionZ()
+	int n = 0
+	while n < 12
+		Actor a = Game.FindRandomActor(px, py, pz, SCAN_RADIUS)
+		if a != None && a != player && !a.HasKeyword(ActorTypeRobot) && !a.HasKeyword(ActorTypeTurret)
 			if a.IsDead()
-				int idx = Bodies.Find(a)
-				if idx < 0 && includeOld
-					idx = Track(a, now)
-				endif
-				if idx >= 0
-					UpdateBody(idx, now, player)
+				if includeOld && Bodies.Find(a) < 0
+					Track(a, now)
 				endif
 			elseif !a.IsPlayerTeammate()
 				; get told when this one dies, so we know the exact time of death
 				RegisterForRemoteEvent(a, "OnDeath")
 			endif
 		endif
-		i += 1
+		n += 1
+	endwhile
+
+	; 2) update every tracked body that is loaded around the player
+	int i = Bodies.Length - 1
+	while i >= 0
+		Actor b = Bodies[i]
+		if b == None || b.IsDeleted()
+			Release(i, true)
+		elseif b.Is3DLoaded() || (Remains[i] != None && Remains[i].Is3DLoaded())
+			UpdateBody(i, now, player)
+		endif
+		i -= 1
 	endwhile
 
 	; every ~30 seconds: age bodies that are not loaded, drop finished ones, tidy scavengers
@@ -142,8 +156,15 @@ Function Scan()
 	endif
 EndFunction
 
+; The player's own kills arrive at once, without waiting for a scan.
+Event Actor.OnKill(Actor akSender, Actor akVictim)
+	if akVictim != None && !akVictim.HasKeyword(ActorTypeRobot) && !akVictim.HasKeyword(ActorTypeTurret)
+		Track(akVictim, Utility.GetCurrentGameTime())
+	endif
+EndEvent
+
 int Function Track(Actor a, float now)
-	if a == None || a.IsChild() || a.HasKeyword(ActorTypeRobot)
+	if a == None || a.IsChild() || a.HasKeyword(ActorTypeRobot) || a.HasKeyword(ActorTypeTurret)
 		return -1
 	endif
 	int idx = Bodies.Find(a)

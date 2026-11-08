@@ -41,7 +41,7 @@ def new_id():
 V = dict(
     ActorTypeHuman=0x0002CB72, ActorTypeGhoul=0x000EAFB7, ActorTypeFeralGhoul=0x0006B4F2,
     ActorTypeSuperMutant=0x0006D7B6, ActorTypeAnimal=0x00013798, ActorTypeCreature=0x00013795,
-    ActorTypeRobot=0x0002CB73,
+    ActorTypeRobot=0x0002CB73, ActorTypeTurret=0x000B2BF3,
     GnatSwarm01=0x00054BD1,
     LCharViciousDog=0x0007313E, LCharFeralGhoul=0x000758AE, LCharMolerat=0x000342C8,
     LCharRadroach=0x0016CA45, LCharBloatfly=0x00033208,
@@ -127,7 +127,7 @@ props = {
     'CD_ActorTypes': ids['CD_ActorTypes'],
     'CD_ScavengersExterior': ids['CD_ScavengersExterior'],
     'CD_ScavengersInterior': ids['CD_ScavengersInterior'],
-    'ActorTypeRobot': V['ActorTypeRobot'], 'ActorTypeHuman': V['ActorTypeHuman'],
+    'ActorTypeRobot': V['ActorTypeRobot'], 'ActorTypeTurret': V['ActorTypeTurret'], 'ActorTypeHuman': V['ActorTypeHuman'],
     'ActorTypeGhoul': V['ActorTypeGhoul'], 'ActorTypeFeralGhoul': V['ActorTypeFeralGhoul'],
     'ActorTypeSuperMutant': V['ActorTypeSuperMutant'],
     'CD_Flies': V['GnatSwarm01'],

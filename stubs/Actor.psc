@@ -8,3 +8,5 @@ Event OnDeath(Actor akKiller)
 EndEvent
 Event OnPlayerLoadGame()
 EndEvent
+Event OnKill(Actor akVictim)
+EndEvent
