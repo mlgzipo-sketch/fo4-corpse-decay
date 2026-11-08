@@ -32,8 +32,14 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force package\Scripts | Out-Null
-          & $env:CAPRICA --game fallout4 -i stubs -f Institute_Papyrus_Flags.flg -o package\Scripts Scripts\Source\User\CorpseDecayMain.psc
-          if ($LASTEXITCODE -ne 0) { throw "Caprica failed" }
+          $out = (Resolve-Path package\Scripts).Path
+          $stubs = (Resolve-Path stubs).Path
+          # run from the source folder so the script gets no namespace (CorpseDecayMain, not Scripts:Source:User:...)
+          Push-Location Scripts\Source\User
+          & $env:CAPRICA --game fallout4 -i $stubs -f Institute_Papyrus_Flags.flg -o $out CorpseDecayMain.psc
+          $code = $LASTEXITCODE
+          Pop-Location
+          if ($code -ne 0) { throw "Caprica failed" }
           Get-ChildItem package\Scripts -Recurse | Format-Table FullName, Length
           if (-not (Test-Path package\Scripts\CorpseDecayMain.pex)) { throw "no .pex produced" }
           New-Item -ItemType Directory -Force package\Scripts\Source\User | Out-Null

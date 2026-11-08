@@ -5,7 +5,6 @@ Flag Hidden 0
 	Property
 	Variable
 	Struct
-	StructVar
 }
 Flag Conditional 1
 {
