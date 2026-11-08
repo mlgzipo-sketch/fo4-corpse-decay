@@ -36,7 +36,7 @@ jobs:
           $stubs = (Resolve-Path stubs).Path
           # run from the source folder so the script gets no namespace (CorpseDecayMain, not Scripts:Source:User:...)
           Push-Location Scripts\Source\User
-          & $env:CAPRICA --game fallout4 -i $stubs -f Institute_Papyrus_Flags.flg -o $out CorpseDecayMain.psc
+          & $env:CAPRICA --game fallout4 -i $stubs -o $out CorpseDecayMain.psc
           $code = $LASTEXITCODE
           Pop-Location
           if ($code -ne 0) { throw "Caprica failed" }
@@ -60,6 +60,23 @@ jobs:
         with:
           name: CorpseDecay
           path: package
+
+      - name: Publish build to the dist branch
+        if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $sha = "${{ github.sha }}".Substring(0, 7)
+          $branch = "dist/${{ github.ref_name }}"
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git checkout --orphan dist-tmp
+          git rm -rfq --cached .
+          Remove-Item -Recurse -Force (Get-ChildItem -Force -Exclude .git,package,CorpseDecay.zip)
+          Move-Item package\* .
+          Remove-Item package
+          git add -A
+          git commit -qm "Build $sha"
+          git push -f origin "HEAD:refs/heads/$branch"
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')
