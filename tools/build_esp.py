@@ -8,7 +8,9 @@ Works for Fallout 4 and Fallout 4 VR (plain .esp, form version 131, master Fallo
 """
 import struct, sys
 
-OUT = sys.argv[1] if len(sys.argv) > 1 else 'CorpseDecay.esp'
+args = [a for a in sys.argv[1:] if not a.startswith('--')]
+TEST = '--test' in sys.argv  # debug messages on, one game hour counts as a day
+OUT = args[0] if args else 'CorpseDecay.esp'
 FORM_VERSION = 131
 OWN = 0x01000000          # our records: master count (1) in the top byte
 next_id = 0x800
@@ -56,7 +58,7 @@ def add(tag, edid, subs):
 
 # ------------------------------------------------------------------ settings
 GLOBALS = [
-    ('CD_Enabled', 1), ('CD_Debug', 0), ('CD_TimeScale', 1),
+    ('CD_Enabled', 1), ('CD_Debug', 1 if TEST else 0), ('CD_TimeScale', 24 if TEST else 1),
     ('CD_HoursFlies', 3), ('CD_HoursPale', 12), ('CD_HoursRot', 48),
     ('CD_HoursRemains', 96), ('CD_HoursBones', 168), ('CD_HoursCleanup', 336),
     ('CD_ScavengerChance', 25), ('CD_IncludeOldCorpses', 0),

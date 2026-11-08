@@ -91,6 +91,7 @@ Function Setup()
 	RegisterForRemoteEvent(Game.GetPlayer(), "OnPlayerLoadGame")
 	StartTimer(SCAN_INTERVAL, TIMER_SCAN)
 	Log("started, tracking " + Bodies.Length + " corpses")
+	Say("Corpse Decay is running (" + Bodies.Length + " bodies)")
 EndFunction
 
 Event OnTimer(int aiTimerID)
@@ -160,6 +161,7 @@ int Function Track(Actor a, float now)
 	NextScavengerDay.Add(now + Utility.RandomFloat(0.2, 0.6))
 	SeenTick.Add(-10)
 	Log("tracking " + a + " (" + Bodies.Length + " total)")
+	Say("Corpse Decay: body noted (" + Bodies.Length + ")")
 	return Bodies.Length - 1
 EndFunction
 
@@ -303,6 +305,9 @@ Function ApplyStage(int idx, Actor a, int want)
 		endif
 	endif
 
+	if want != Stage[idx]
+		Say("Corpse Decay: stage " + want)
+	endif
 	Stage[idx] = want
 EndFunction
 
@@ -415,6 +420,13 @@ Function DeleteRef(ObjectReference r)
 	if r != None && !r.IsDeleted()
 		r.Disable()
 		r.Delete()
+	endif
+EndFunction
+
+; On-screen message, only in debug mode (works in VR too, no console needed)
+Function Say(string msg)
+	if CD_Debug.GetValueInt() != 0
+		Debug.Notification(msg)
 	endif
 EndFunction
 
