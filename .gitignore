@@ -1,0 +1,4 @@
+package/
+caprica/
+*.zip
+__pycache__/

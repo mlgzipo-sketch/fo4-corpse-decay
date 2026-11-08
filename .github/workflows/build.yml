@@ -1,0 +1,66 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get Caprica (open-source Papyrus compiler)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v0.3.0 -R Orvid/Caprica -D caprica
+          Get-ChildItem caprica | Format-Table Name, Length
+          Get-ChildItem caprica -Filter *.zip | ForEach-Object { Expand-Archive $_.FullName -DestinationPath caprica -Force }
+          Get-ChildItem caprica -Filter *.7z | ForEach-Object { 7z x $_.FullName -ocaprica -y | Out-Null }
+          $exe = Get-ChildItem caprica -Recurse -Filter Caprica.exe | Select-Object -First 1
+          if (-not $exe) { Get-ChildItem caprica -Recurse | Format-Table FullName; throw "Caprica.exe not found" }
+          "CAPRICA=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Compile scripts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force package\Scripts | Out-Null
+          & $env:CAPRICA --game fo4 -i stubs -f Institute_Papyrus_Flags.flg -o package\Scripts Scripts\Source\User\CorpseDecayMain.psc
+          if ($LASTEXITCODE -ne 0) { throw "Caprica failed" }
+          Get-ChildItem package\Scripts -Recurse | Format-Table FullName, Length
+          if (-not (Test-Path package\Scripts\CorpseDecayMain.pex)) { throw "no .pex produced" }
+          New-Item -ItemType Directory -Force package\Scripts\Source\User | Out-Null
+          Copy-Item Scripts\Source\User\*.psc package\Scripts\Source\User
+
+      - name: Build ESP
+        shell: pwsh
+        run: python tools\build_esp.py package\CorpseDecay.esp
+
+      - name: Package
+        shell: pwsh
+        run: |
+          Copy-Item README.md package\CorpseDecay-README.md
+          Compress-Archive -Path package\* -DestinationPath CorpseDecay.zip
+
+      - name: Upload mod
+        uses: actions/upload-artifact@v4
+        with:
+          name: CorpseDecay
+          path: package
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          Copy-Item CorpseDecay.zip "CorpseDecay-$tag.zip"
+          gh release create $tag "CorpseDecay-$tag.zip" --title "Corpse Decay $tag" --notes "Unpack into the game's Data folder or install with Vortex/MO2." --prerelease
