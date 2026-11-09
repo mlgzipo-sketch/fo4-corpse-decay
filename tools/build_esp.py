@@ -85,25 +85,26 @@ def setf(b, off, v): struct.pack_into('<f', b, off, v)
 CRYO_DNAM = h('050000000100000007000000000000000000000000000000000020419a99193e000000000000000000000000000000000000803fadd8f8000000000000001040000020410000003e0000000000000000cdcc4c3d0000003e02000000000000000000803f00007f430000000000000000ffffff00ffffff00040000803fec51383eec51383e000000000000803e0000803f0e0000000000004000000040')
 POISON_DNAM = h('050000000100000007000000515151000000803f0000003f0000803fcdcc4c3dcdcccc3d0000003f000000008fc275bd0000803f242b13000000803f0000003f0000803f0000403fcdcccc3d0000003f0ad7a33d0000403f06000000000000000000204100007f43000000002c962400b0b0b0006b6b6b00040000403f0000403f0000403f000000000000803e0000803f0e8403000000c0400000c040')
 
-# pale: a cold grey rim on the skin, no ice texture
-d = bytearray(CRYO_DNAM)
-setf(d, 16, 2.0); setf(d, 20, 0.0); setf(d, 28, 0.0); setf(d, 80, 0.0)
-d[52:56] = bytes([0x9c, 0xa6, 0xa0, 0])
-setf(d, 56, 2.0); setf(d, 60, 0.0); setf(d, 68, 0.35); setf(d, 84, 0.35)
-add('EFSH', 'CD_PaleFXS', [sub('ICON', zstr('Effects\\IceTile_d.dds')), sub('NAM7', b'\0'),
-                           sub('NAM8', zstr('Effects\\Gradients\\CritCryoGrad.dds')), sub('DATA', b''),
-                           sub('DNAM', bytes(d))])
+# Both looks are a flat, non-glowing tint: a plain white texture, no colour palette,
+# alpha blending (dest blend 6) instead of additive glow, no pulsing, no scrolling, no edge rim.
+# (The first version borrowed weapon hit effects and looked like one.)
+TINT_DNAM = h('050000000100000007000000ffffff006666e63e0000803f6666e63e9a99193ecdcccc3d6666e63e8fc2f5bdcdcc4c3d000000402ec94d006666e63e0000803f6666e63e0000003fcdcccc3d6666e63e9a99193e0000003f02000000000000000000000000007f430000000000000000ffffff00ffffff00040000003fcdcc4c3f0000003f00000000295c8f3d3333b33e08890300cdcccc3d00000040')
 
-# rot: dark green veins, steady (no pulsing, no scrolling)
-d = bytearray(POISON_DNAM)
-d[12:16] = bytes([0x3a, 0x40, 0x2c, 0])
-setf(d, 16, 2.0); setf(d, 20, 0.0); setf(d, 28, 0.45); setf(d, 80, 0.45)
-setf(d, 32, 0.0); setf(d, 36, 0.0); setf(d, 40, 0.0); setf(d, 44, 0.0)
-d[52:56] = bytes([0x2a, 0x30, 0x14, 0])
-setf(d, 56, 2.0); setf(d, 60, 0.0); setf(d, 68, 0.6); setf(d, 84, 0.6); setf(d, 72, 0.0); setf(d, 76, 0.0)
-add('EFSH', 'CD_RotFXS', [sub('ICON', zstr('Effects\\NoiseVeinPatternTile_d.DDS')), sub('NAM7', b'\0'),
-                          sub('NAM8', zstr('Effects\\Gradients\\PoisonShaderGrad.dds')), sub('DATA', b''),
-                          sub('DNAM', bytes(d)), sub('MODT', h('0400000000000000000000000000000000000000'))])
+def tint(edid, rgb, alpha):
+    d = bytearray(TINT_DNAM)
+    d[12:16] = bytes(rgb) + b'\0'
+    setf(d, 16, 3.0); setf(d, 20, 0.0); setf(d, 24, 1.0)       # fade in over 3 s, then hold
+    setf(d, 28, alpha); setf(d, 80, alpha)                      # persistent = full alpha
+    setf(d, 32, 0.0); setf(d, 36, 0.0); setf(d, 40, 0.0); setf(d, 44, 0.0)
+    setf(d, 56, 0.0); setf(d, 60, 0.0); setf(d, 68, 0.0); setf(d, 84, 0.0)   # no edge rim
+    setf(d, 72, 0.0); setf(d, 76, 0.0)
+    struct.pack_into('<I', d, 88, 6)                            # alpha blend, not additive
+    add('EFSH', edid, [sub('ICON', zstr('Effects\\ColorWhiteAlphaUtility_d.dds')), sub('NAM7', b'\0'),
+                       sub('NAM8', b'\0'), sub('DATA', b''), sub('DNAM', bytes(d)),
+                       sub('MODT', h('0400000000000000000000000000000000000000'))])
+
+tint('CD_PaleFXS', (150, 156, 140), 0.22)   # pale, slightly grey-green skin
+tint('CD_RotFXS', (62, 58, 34), 0.5)        # dark brown-green rot
 
 # ------------------------------------------------------------------ lootable remains
 def remains(edid, name, model, obnd, modt):
