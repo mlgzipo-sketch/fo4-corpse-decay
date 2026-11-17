@@ -142,10 +142,15 @@ Function Scan()
 	int i = Bodies.Length - 1
 	while i >= 0
 		Actor b = Bodies[i]
-		if b == None || b.IsDeleted()
+		if Gone(b)
 			Release(i, true)
-		elseif b.Is3DLoaded() || (Remains[i] != None && Remains[i].Is3DLoaded())
-			UpdateBody(i, now, player)
+		else
+			if Remains[i] != None && Gone(Remains[i])
+				Remains[i] = None
+			endif
+			if b.Is3DLoaded() || (Remains[i] != None && Remains[i].Is3DLoaded())
+				UpdateBody(i, now, player)
+			endif
 		endif
 		i -= 1
 	endwhile
@@ -236,7 +241,7 @@ EndFunction
 ; Called for a tracked body that is loaded near the player.
 Function UpdateBody(int idx, float now, Actor player)
 	Actor a = Bodies[idx]
-	if a == None || a.IsDeleted() || !a.IsDead()
+	if Gone(a) || !a.IsDead()
 		; deleted, or the cell reset and the actor came back alive
 		Release(idx, true)
 		return
@@ -285,7 +290,7 @@ Function ApplyStage(int idx, Actor a, int want)
 
 	; ---- flies from the first stage until only bones are left
 	if want >= STAGE_FLIES && want < STAGE_BONES
-		if Flies[idx] == None
+		if Gone(Flies[idx])
 			ObjectReference f = a.PlaceAtMe(CD_Flies, 1, false, false, false)
 			f.MoveTo(a, 0.0, 0.0, 30.0, false)
 			Flies[idx] = f
@@ -303,13 +308,13 @@ Function ApplyStage(int idx, Actor a, int want)
 				base = CD_RemainsBones
 			endif
 			ObjectReference old = Remains[idx]
-			if old == None || old.GetBaseObject() != base
+			if Gone(old) || old.GetBaseObject() != base
 				ObjectReference r = a.PlaceAtMe(base, 1, false, false, false)
 				r.SetAngle(0.0, 0.0, a.GetAngleZ())
 				if a.HasKeyword(ActorTypeSuperMutant)
 					r.SetScale(1.3)
 				endif
-				if old != None
+				if !Gone(old)
 					old.RemoveAllItems(r)
 					DeleteRef(old)
 				else
@@ -360,7 +365,7 @@ Function TryScavengers(int idx, Actor a, float now, Actor player)
 	Form what = pool.GetAt(Utility.RandomInt(0, pool.GetSize() - 1))
 	int count = Utility.RandomInt(1, 3)
 	ObjectReference anchor = a
-	if Remains[idx] != None
+	if !Gone(Remains[idx])
 		anchor = Remains[idx]
 	endif
 	int n = 0
@@ -389,7 +394,7 @@ Function Maintain(float now, Actor player)
 	int i = Bodies.Length - 1
 	while i >= 0
 		Actor a = Bodies[i]
-		if a == None || a.IsDeleted()
+		if Gone(a)
 			Release(i, true)
 		elseif StageFor(HoursDead(i, now)) == STAGE_GONE && !a.Is3DLoaded()
 			Release(i, true)
@@ -402,7 +407,7 @@ Function Maintain(float now, Actor player)
 	while i >= 0
 		ObjectReference s = Scavengers[i]
 		Actor sa = s as Actor
-		if s == None || s.IsDeleted()
+		if Gone(s)
 			Scavengers.Remove(i)
 		elseif !s.Is3DLoaded() || (sa != None && sa.IsDead())
 			if !s.Is3DLoaded()
@@ -424,7 +429,7 @@ Function Release(int idx, bool cleanup)
 		DeleteRef(Remains[idx])
 	endif
 	Actor a = Bodies[idx]
-	if a != None && !a.IsDeleted()
+	if !Gone(a)
 		CD_PaleFXS.Stop(a)
 		CD_RotFXS.Stop(a)
 	endif
@@ -437,8 +442,21 @@ Function Release(int idx, bool cleanup)
 	SeenTick.Remove(idx)
 EndFunction
 
+; True when the reference is None, deleted, or its form no longer exists
+; (a deleted temporary actor stays in our arrays as a "<nullptr form>" that is not None,
+; and every native call on it fails). GetFormID() returns 0 for those.
+bool Function Gone(ObjectReference r)
+	if r == None
+		return true
+	endif
+	if r.GetFormID() == 0
+		return true
+	endif
+	return r.IsDeleted()
+EndFunction
+
 Function DeleteRef(ObjectReference r)
-	if r != None && !r.IsDeleted()
+	if !Gone(r)
 		r.Disable()
 		r.Delete()
 	endif
